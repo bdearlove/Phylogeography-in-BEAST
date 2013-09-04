@@ -1,4 +1,6 @@
-# Inferring spatiotemporal dynamics of the H1N1 influenza pandemic from sequence data
+# Inferring spatiotemporal dynamics of H5N1 influenza from sequence data
+
+## NB: This is a work in progress, taking Trevor Bedford's excellent tutorial, and modifying it using a smaller dataset on H5N1 influenza, and using a visualization in Phylowood. Any mistakes are mine! The text below is yet to be updated, so please don't fork just yet.
 
 ## Introduction
 
