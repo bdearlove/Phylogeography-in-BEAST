@@ -202,6 +202,8 @@ Generally, larger datasets will require longer chains and less frequent sampling
 
 **Enter `H5N1_HA_skyride_ucld_discrete` for 'File name stem'.**
 
+**Also check the 'Create operatory analysis file'.**
+
 This will result in 2000 samples logged to the files `H5N1_HA_skyride_ucld_discrete.log` and `H5N1_HA_skyride_ucld_discrete.trees`.
 
 ![beauti_mcmc_geo](images/beauti_mcmc_geo.png)
@@ -320,6 +322,8 @@ java -Xms64m -Xmx1024m -Djava.library.path="/home/simon/Programs/BEASTv1.7.5/lib
 ### Output
 
 On my (not very fast) Mac, it takes about one hour for six million steps of the Markov chain, i.e. around 8-9 hours to run. In part, this is because the model is quite complex. As you may not have time to run these files yourself in a hands-on practical session, I've included the resulting log files and trees file in the practical in the `output` directory.
+
+At the end of the BEAST run, you'll see some information regarding how the run went - this will be saved as as `H5N1_HA_skyride_ucld_discrete.ops` if you checked the 'Create operator analysis file' in BEAUti. This will tell you where BEAST spent most of its time, as well as the acceptance probabilities. As a guide, the optimal acceptance rate for an infinite number of distributions that are IID and Gaussian is 0.234 or 23.4%; note how the substitution parameters fall (surprisingly) close to this (probably due to the central limit theorem), whereas the wide exchange and Wilson-Balding tree proposals are rarely accepted (see [here](http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=4696663) for a discussion of these moves). Given that these proposals quite drastically change the tree, it isn't surprising that these have a low acceptance; the cost of this inefficiency is that tree space is explored more widely. If the acceptance rate is too high, then whilst many changes are being accepted, they may be too small, and hence the Markov chain may not be mixing well either.
 
 ## Examine the skyride output
 
