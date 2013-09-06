@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This tutorial walks through how to use [BEAST](http://beast.bio.ed.ac.uk/) and associated software to infer spatiotemporal dynamics from viral sequence data. I forked Trevor Bedford's [excellent tutorial on H1N1 pandemic H1N1 influenza](https://github.com/trvrb/influenza-dynamics-practical), and modified it using a smaller dataset on H5N1 influenza, and using a visualization in Phylowood. Any mistakes and opinions introduced are mine!
+This tutorial walks through how to use [BEAST](http://beast.bio.ed.ac.uk/) and associated software to infer spatiotemporal dynamics from viral sequence data. I forked Trevor Bedford's [excellent tutorial on pandemic H1N1 influenza](https://github.com/trvrb/influenza-dynamics-practical), and modified it using a smaller dataset on H5N1 influenza, and using a visualization in Phylowood. Any mistakes and opinions introduced are mine!
 
 ## Required software
 
