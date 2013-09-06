@@ -1,0 +1,7 @@
+Fujian 25.93 118.25
+Guangdong 22.87 113.00
+Guangxi 23.64 108.27
+Hebei 39.32 116.70
+Henan 33.88 113.49
+HongKong 22.25 114.57
+Hunan 27.38 111.53

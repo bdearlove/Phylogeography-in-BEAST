@@ -1,0 +1,1 @@
+java -Xms64m -Xmx1024m -Djava.library.path="/home/simon/Programs/BEASTv1.7.5/lib:/home/simon/lib:/usr/local/lib" -cp "/home/simon/Programs/BEASTv1.7.5/lib/beast.jar:/home/simon/Programs/BEASTv1.7.5/lib/beast-beagle.jar" dr.app.beast.BeastMain -working -seed 1 -threads 8 -beagle -beagle_CPU -beagle_SSE -beagle_double -beagle_scaling dynamic H5N1_HA_skyride_ucld_discrete.xml

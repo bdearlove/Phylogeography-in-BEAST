@@ -1,0 +1,361 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="file:////opt/extras.ubuntu.com/uberwriter/share/uberwriter/media/uberwriter.css" type="text/css" />
+</head>
+<body>
+<h1 id="inferring-spatiotemporal-dynamics-of-h5n1-influenza-from-sequence-data">Inferring spatiotemporal dynamics of H5N1 influenza from sequence data</h1>
+<h2 id="introduction">Introduction</h2>
+<p>This tutorial walks through how to use <a href="http://beast.bio.ed.ac.uk/">BEAST</a> and associated software to infer spatiotemporal dynamics from viral sequence data. I forked Trevor Bedford’s <a href="https://github.com/trvrb/influenza-dynamics-practical">excellent tutorial on H1N1 pandemic H1N1 influenza</a>, and modified it using a smaller dataset on H5N1 influenza, and using a visualization in Phylowood. Any mistakes and opinions introduced are mine!</p>
+<h2 id="required-software">Required software</h2>
+<ul>
+<li><a href="http://beast.bio.ed.ac.uk/">BEAST</a> is used to infer evolutionary dynamics from sequence data.</li>
+<li><a href="http://beast.bio.ed.ac.uk/BEAGLE">BEAGLE</a> is a helper library that allows faster and more advanced functions to be run in BEAST. For this practical, it is not necessary to install CUDA drivers (step 2 in the BEAGLE installation).</li>
+<li><a href="http://tree.bio.ed.ac.uk/software/tracer/">Tracer</a> is used to analyze parameter estimates from BEAST.</li>
+<li><a href="http://tree.bio.ed.ac.uk/software/figtree/">FigTree</a> is used to analyze phylogeny estimates from BEAST.</li>
+<li><a href="http://www.google.com/earth/">Google Earth</a> is used to display phylogeographic reconstructions.</li>
+<li><a href="http://mlandis.github.io/phylowood/">Phylowood</a> is a browser-based platform for phylogeographic reconstructions.</li>
+</ul>
+<p>In addition, <a href="http://www.r-project.org">R</a> and <a href="http://www.ruby-lang.org">Ruby</a> are used for some basic data processing tasks. As I’ve already processed the data, you don’t need to install these unless you want to use them routinely.</p>
+<h2 id="compile-sequence-data">Compile sequence data</h2>
+<p>This practical uses a test dataset of haemagglutinin sequences of H5N1 influenza (n=98) from 7 locations, as distributed with <a href="http://beast-mcmc.googlecode.com/svn/trunk/examples/release/discreteTraits/H5N1_HA.nex">BEAST</a>. Although BEAST accepts either <a href="http://en.wikipedia.org/wiki/Nexus_file">NEXUS</a> or <a href="http://en.wikipedia.org/wiki/FASTA_format">FASTA</a> format for sequence data, I converted the original NEXUS dataset into FASTA, as this is probably the most common sequence format to start with. The final aligned dataset can be found at <code>data/H5N1_HA.fas</code>.</p>
+<p>Metadata about the date of sampling is incorporated into the sequence name, while location is kept as a separate tab-delimited file (<code>data/H5N1_locs.txt</code>).</p>
+<h2 id="prepare-a-phylogeographic-analysis">Prepare a phylogeographic analysis</h2>
+<p>The program BEAST takes an XML control file that specifies sequence data, metadata and also details the analysis to be run. All program parameters lie in this control file. However, to make things easier, BEAST is distributed with the companion program BEAUti that assists in generating the XML. Here, we will produce an XML that specifies a “skyride” analysis, in which we estimate changes virus population size through time, and a discrete trait model for modeling geographic spread.</p>
+<p><strong>Open BEAUti.</strong></p>
+<p>This will show a window with the ‘Partitions’ panel open. We first need to load the sequence data.</p>
+<p><strong>Click on the ‘+’ or choose ‘Import Data…’ from the File menu and select <code>H5N1_HA.fas</code>.</strong></p>
+<p>This will load a data partition of 98 taxa and 1698 nucleotide sites.</p>
+<div class="figure">
+<img src="images/beauti_partitions.png" alt="beauti_partitions" /><p class="caption">beauti_partitions</p>
+</div>
+<p>Double-clicking the partition will open a window showing the sequence alignment. It’s good to check to make sure the alignment is in order.</p>
+<p>We next label each taxon with its sampling date.</p>
+<p><strong>Select the ‘Tips’ panel, select ‘Use tip dates’ and click on ‘Guess Dates’.</strong></p>
+<p>We need to tell BEAUti where to find the tip dates in the taxon names. Here, each taxon name ends with its year of sampling separated by an underscore.</p>
+<p><strong>Select ‘Defined just by its order’.</strong></p>
+<p><strong>Select ‘Order’ equals ‘last’ and input <code>_</code> for ‘Prefix’.</strong></p>
+<p><strong>Select ‘Parse as a number’.</strong></p>
+<div class="figure">
+<img src="images/beauti_tips_guess_dates.png" alt="beauti_tips_guess_dates" /><p class="caption">beauti_tips_guess_dates</p>
+</div>
+<p>This will result in the ‘Date’ and ‘Height’ columns filing the the date forward from the past and the height of each taxon relative to the most recent taxon.</p>
+<p><strong>Click on ‘Date’ twice to sort rows in reverse.</strong></p>
+<div class="figure">
+<img src="images/beauti_tips.png" alt="beauti_tips" /><p class="caption">beauti_tips</p>
+</div>
+<p>It will be helpful for later to record that the most recent tip has a date of <code>2005</code>. The sampling times provided here are rather coarse (year only); a more thorough analysis would involve enabling ‘Tip date sampling’, and specifying a range of sampling dates for each sequence.</p>
+<p>Next, we need to specify a model of the process by which nucleotide sites evolve.</p>
+<p><strong>Select the ‘Sites’ panel.</strong></p>
+<p>BEAUti only allows nucleotide models to be specified. We will use a fairly widely used model - the general time reversible (GTR) model, estimating base frequencies and specifying rate distribution as a mixture between a gamma distribution (discretized into four categories) and 0 (invariant sites). A model selection procedure prior to running BEAST (e.g. in <a href="http://www.datamonkey.org">Datamonkey</a>) may help to guide this choice.</p>
+<div class="figure">
+<img src="images/beauti_sites.png" alt="beauti_sites" /><p class="caption">beauti_sites</p>
+</div>
+<p>Next, we need to specify a molecular clock to convert between sequence substitutions and time.</p>
+<p><strong>Select the ‘Clocks’ panel.</strong></p>
+<p>We choose a relaxed molecular clock in which substitutions occur at the different (uncorrelated lognormal) rates across branches in the phylogeny.</p>
+<div class="figure">
+<img src="images/beauti_clocks.png" alt="beauti_clocks" /><p class="caption">beauti_clocks</p>
+</div>
+<p>Next, we need to specify a model that describes phylogenetic structure based on some underlying demographic process.</p>
+<p><strong>Select the ‘Trees’ panel.</strong></p>
+<p>Here, we will choose a model that describes how the virus population size changes through time. There are parametric models that assume some basic function (like exponential growth) and there are non-parametric models that don’t make any strong assumptions about the pattern of change. We begin by choosing a non-parametric model.</p>
+<p><strong>Select ‘Coalescent: GMRF Bayesian Skyride’ from the ‘Tree Prior’ dropdown and ‘Time-aware’ from the ‘Smoothing’ dropdown.</strong></p>
+<p>This model assumes a fixed number of windows, where within each window effective population size is constant, and estimates are smoothed using a Gaussian Markov Random Field. We start with a UPGMA initial tree.</p>
+<div class="figure">
+<img src="images/beauti_trees_skyride.png" alt="beauti_trees_skyline" /><p class="caption">beauti_trees_skyline</p>
+</div>
+<p>Generally, these non-parametric models offer flexibility for the data to say what it wants to say. However, these are relatively complex models and so suffer from the <a href="http://scott.fortmann-roe.com/docs/BiasVariance.html">bias-variance tradeoff</a>. This often results in wide bounds of uncertainty to the resulting estimates.</p>
+<p>We next need to load the geographic metadata into BEAUti.</p>
+<p><strong>Select the ‘Traits’ panel and click on the ‘Add trait’ button.</strong></p>
+<p><strong>In the resulting dialog, select ‘Import trait(s) from a mapping file and press ’OK’.</strong></p>
+<div class="figure">
+<img src="images/beauti_import_traits.png" alt="beauti_import_traits" /><p class="caption">beauti_import_traits</p>
+</div>
+<p>Select the <code>data/H5N1_locs.txt</code> file. Doing so results in a discrete trait being associated with each taxon.</p>
+<div class="figure">
+<img src="images/beauti_traits.png" alt="beauti_traits" /><p class="caption">beauti_traits</p>
+</div>
+<p>BEAST treats location like just another trait. We have to generate a new data partition from this trait in order to use it in the analysis.</p>
+<p><strong>Select the partition so it appears in the window, then press ‘Create partition from trait’.</strong></p>
+<p>We next need to give a model for how each location character state transitions to other location character states.</p>
+<p><strong>Select the ‘Sites’ panel and click on ‘location’ in the left-hand list of data partitions.</strong></p>
+<p>We will use a ‘Symmetric substitution model’ where the rate that A goes to B equals the rate that B goes to A. Although the asymmetric model seems like it should better match reality, using it adds significant parameter complexity and additionally sacrifices a fair degree of robustness to sampling particulars.</p>
+<p><strong>Select ‘Infer social network with BSSVS’.</strong></p>
+<p>BSSVS stands for Bayesian Stochastic Search Variable Selection. It adds an indicator variable for each pairwise transition rate that specifies whether the rate is on or off, i.e. at its estimated value or at 0. These indicators serve to decrease the effective number of rate parameters that need to be estimated and are helpful to include when trying to infer a sparse transition matrix.</p>
+<div class="figure">
+<img src="images/beauti_sites_geo.png" alt="beauti_sites_location" /><p class="caption">beauti_sites_location</p>
+</div>
+<p>As with the sequence partition, we also need to include a model of how geographic transition rate relates to time.</p>
+<p><strong>Select the ‘Clocks’ panel.</strong></p>
+<p>We will stick with the default ‘Strict clock’ for transitions among geographic locations.</p>
+<div class="figure">
+<img src="images/beauti_clocks_geo.png" alt="beauti_clocks_geo" /><p class="caption">beauti_clocks_geo</p>
+</div>
+<p><strong>Select the ‘Trees’ panel.</strong></p>
+<p>We don’t need to do anything here, because the sequences and the geographic locations are based on the same underlying evolutionary tree.</p>
+<p><strong>Select the ‘States’ panel and click on ‘location’ in the left-hand list of data partitions.</strong></p>
+<p>In addition to reconstructing states at all ancestors, we are particularly interested in where in the world the pandemic emerged.</p>
+<p><strong>Select ‘Reconstruct states’ at ‘Tree Root’ (in addition to ‘Reconstruct states at all ancestors’, which should already be checked).</strong></p>
+<div class="figure">
+<img src="images/beauti_states_geo.png" alt="beauti_states_geo" /><p class="caption">beauti_states_geo</p>
+</div>
+<p>Next, we need to specify priors for each parameter in the model.</p>
+<p><strong>Select the ‘Priors’ panel.</strong></p>
+<p>Specifying priors can be difficult, especially when there may be little prior information available. If there are sufficient data available, then the results will be fairly insensitive to priors. In this case, we leave most of the priors at their default values.</p>
+<p>However, we are forced to choose a prior for the evolutionary rate, which in the uncorrelated lognormal relaxed clock is ucld.mean.</p>
+<p><strong>Click on the prior for ‘ucld.mean’ (currently highlighted in red).</strong></p>
+<p>Although including improper priors will not harm parameter estimates, it will adversely impact the ability to do model comparison, and so it is not recommended. Here, we use a ‘vague’ prior on ‘ucld.mean’, choosing uniform between 0 and 1.</p>
+<p><strong>Select ‘Uniform’ from the ‘Prior Distribution’ dropdown.</strong></p>
+<p><strong>Enter <code>0.0</code> as a lower-bound and <code>1.0</code> as an upper bound.</strong></p>
+<p>We actually have a good expectation from knowledge of influenza mutation rates that ‘clock.rate’ should be near 0.005. We include this as an initial value to aid convergence.</p>
+<p><strong>Enter <code>0.005</code> as an ‘Initial value’.</strong></p>
+<p>After setting this, the ‘ucld.mean’ prior no longer shows as red.</p>
+<p>We need to give a prior to the overall geographic transition rate.</p>
+<p><strong>Select the ‘location.clock.rate’ prior and choose ‘Exponential’ from the dropdown.</strong></p>
+<p>We will leave mean and initial value set to 1.0.</p>
+<div class="figure">
+<img src="images/beauti_priors_geo.png" alt="beauti_priors_exp" /><p class="caption">beauti_priors_exp</p>
+</div>
+<p>Next, we need to specify operators (or proposals) for the <a href="http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo">MCMC</a> sampler.</p>
+<p><strong>Select the ‘Operators’ panel.</strong></p>
+<p>Good proposals will make the MCMC more efficient and poor proposals will lead to MCMC inefficiency and longer run times. In this case, we stick with the default list of operators.</p>
+<div class="figure">
+<img src="images/beauti_operators.png" alt="beauti_operators" /><p class="caption">beauti_operators</p>
+</div>
+<p>Following a run, BEAST may suggest changes to these operators in order to make further runs more efficient.</p>
+<p>Next, we need to specify how often and where MCMC samples are logged to.</p>
+<p><strong>Select the ‘MCMC’ panel.</strong></p>
+<p>Generally, larger datasets will require longer chains and less frequent sampling. This example will aim for 2000 samples, planning to throw out the first 500 or 1000 as <a href="http://en.wikipedia.org/wiki/Burn-in">burn-in</a>. The effective sample size will depend on the amount of autocorrelation in the Markov Chain, and will vary depending on the parameter.</p>
+<p><strong>Enter <code>50000000</code> (50 million) for ‘Length of chain’.</strong></p>
+<p><strong>Enter <code>25000</code> for ‘Log parameters’.</strong></p>
+<p><strong>Enter <code>H5N1_HA_skyride_ucld_discrete</code> for ‘File name stem’.</strong></p>
+<p>This will result in 2000 samples logged to the files <code>H5N1_HA_skyride_ucld_discrete.log</code> and <code>H5N1_HA_skyride_ucld_discrete.trees</code>.</p>
+<div class="figure">
+<img src="images/beauti_mcmc_geo.png" alt="beauti_mcmc_geo" /><p class="caption">beauti_mcmc_geo</p>
+</div>
+<p>We save the XML control file in BEAUti, so we don’t have to repeat all the steps.</p>
+<p><strong>Choose ‘File’, then ‘Save as’ to save the model specification (saved under <code>xml/H5N1_HA.xml</code>). This is <em>not</em> the same as the BEAST file.</strong></p>
+<p>Finally, we generate the file for BEAST.</p>
+<p><strong>Click on ‘Generate BEAST File…’</strong></p>
+<p><strong>Select Continue when shown the priors.</strong></p>
+<p><strong>Save the XML as <code>H5N1_HA_skyride_ucld_discrete.xml</code>.</strong></p>
+<p>For the most part, BEAUti does a good job creating an XML optimized for the analysis at hand. However, there may be small details that need to be cleaned up by hand, or the models may not be able to be specified in BEAUti.</p>
+<p><strong>Open <code>H5N1_HA_skyride_ucld_discrete.xml</code> in a text editor.</strong></p>
+<p>XML is structured in a hierarchical fashion with logical blocks of markup surrounding by open (<code>&lt;block&gt;</code>) and close (<code>&lt;/block&gt;</code>) tags.</p>
+<p><strong>Find the XML block that specifies tree output called ‘logTree’.</strong></p>
+<pre><code>&lt;logTree id=&quot;treeFileLog&quot; logEvery=&quot;25000&quot; nexusFormat=&quot;true&quot; fileName=&quot;H5N1_HA_skyride_ucld_discrete.trees&quot; sortTranslationTable=&quot;true&quot;&gt;
+            &lt;treeModel idref=&quot;treeModel&quot;/&gt;
+            &lt;trait name=&quot;rate&quot; tag=&quot;H5N1_HA.fas.rate&quot;&gt;
+                &lt;discretizedBranchRates idref=&quot;H5N1_HA.fas.branchRates&quot;/&gt;
+            &lt;/trait&gt;
+            &lt;trait name=&quot;rate&quot; tag=&quot;location.rate&quot;&gt;
+                &lt;strictClockBranchRates idref=&quot;location.branchRates&quot;/&gt;
+            &lt;/trait&gt;
+            &lt;posterior idref=&quot;posterior&quot;/&gt;
+
+            &lt;!-- START Ancestral state reconstruction                                    --&gt;
+            &lt;trait name=&quot;location.states&quot; tag=&quot;location&quot;&gt;
+                &lt;ancestralTreeLikelihood idref=&quot;location.treeLikelihood&quot;/&gt;
+            &lt;/trait&gt;
+
+            &lt;!-- END Ancestral state reconstruction                                      --&gt;
+
+        &lt;/logTree&gt;</code></pre>
+<p><strong>Delete the ‘trait’ block for the tag ‘location.rate’ that contains ‘strictClockBranchRates’.</strong></p>
+<pre><code>&lt;logTree id=&quot;treeFileLog&quot; logEvery=&quot;25000&quot; nexusFormat=&quot;true&quot; fileName=&quot;H5N1_HA_skyride_ucld_discrete.trees&quot; sortTranslationTable=&quot;true&quot;&gt;
+            &lt;treeModel idref=&quot;treeModel&quot;/&gt;
+            &lt;trait name=&quot;rate&quot; tag=&quot;H5N1_HA.fas.rate&quot;&gt;
+                &lt;discretizedBranchRates idref=&quot;H5N1_HA.fas.branchRates&quot;/&gt;
+            &lt;/trait&gt;
+            &lt;posterior idref=&quot;posterior&quot;/&gt;
+
+            &lt;!-- START Ancestral state reconstruction                                    --&gt;
+            &lt;trait name=&quot;location.states&quot; tag=&quot;location&quot;&gt;
+                &lt;ancestralTreeLikelihood idref=&quot;location.treeLikelihood&quot;/&gt;
+            &lt;/trait&gt;
+
+            &lt;!-- END Ancestral state reconstruction                                      --&gt;
+
+        &lt;/logTree&gt;
+</code></pre>
+<p>This fine-tuning of the XML can be quite helpful and there are quite a few more advanced analyses that require editing the XML rather than relying on BEAUti output.</p>
+<p>I’ve included this XML with the practical as <code>xml/H5N1_HA_skyride_ucld_discrete.xml</code>.</p>
+<h2 id="run-the-analysis">Run the analysis</h2>
+<p>This XML file contains all the information that BEAST requires.</p>
+<h3 id="running-beast-from-a-gui">Running BEAST from a GUI</h3>
+<p><strong>Open BEAST.</strong></p>
+<p><strong>Click on ‘Choose File…’ and select <code>H5N1_HA_skyride_ucld_discrete.xml</code>.</strong></p>
+<p>By default, BEAST will have ‘Allow overwriting of log files’ turned off, so that you can’t accidentally overwrite a previous run’s output. However, you’ll often need to check this box when there are previous log files in the same directory that should be overwritten.</p>
+<div class="figure">
+<img src="images/beast.png" alt="beast" /><p class="caption">beast</p>
+</div>
+<p>BEAGLE is turned off by default. BEAGLE is an additional Java library that contains high-performance code to compute evolutionary likelihoods on phylogenetic trees. Most of the BEAST analyses will work on the built-in BEAST engine. However, some of the newer analyses will require BEAGLE. In this case, we can leave it unchecked or checked as desired. The scaling is to avoid numerical underflow, which can be a problem with large datasets. Although BEAGLE can work with graphics processing units, it can also use the CPU, so it can accelerate the analysis on most</p>
+<p><strong>Click on ‘Run’.</strong></p>
+<p>This will start the BEAST run and log MCMC setup and progress to a window. Additionally, the log and trees files will start to fill with MCMC samples.</p>
+<p>Unfortunately, BEAST runs can take quite a long time, and it’s not always clear how long they need to run.</p>
+<p>Because of these time requirements, I almost never run BEAST analyses locally, preferring instead to get the XML up and running and tested locally and then running BEAST on a cluster node to perform the full analysis.</p>
+<h3 id="running-beast-from-the-command-line">Running BEAST from the command line</h3>
+<p>On Linux, I would run BEAST using a command line interface; the specifics would vary depending on your setup. I usually run ‘screen’ or ‘tmux’ first, as BEAST runs can take a long time, and the likelihood of the connection breaking to the server is high.</p>
+<p>The following lists all the command line options.</p>
+<pre><code>/home/simon/Programs/BEASTv1.7.5/bin/beast --help </code></pre>
+<p>Here is a full example command line on my machine.</p>
+<pre><code>java -Xms64m -Xmx1024m -Djava.library.path=&quot;/home/simon/Programs/BEASTv1.7.5/lib:/home/simon/lib:/usr/local/lib&quot; -cp &quot;/home/simon/Programs/BEASTv1.7.5/lib/beast.jar:/home/simon/Programs/BEASTv1.7.5/lib/beast-beagle.jar&quot; dr.app.beast.BeastMain -working -seed 1 -threads 8 -beagle -beagle_CPU -beagle_SSE -beagle_double -beagle_scaling dynamic H5N1_HA_skyride_ucld_discrete.xml</code></pre>
+<h3 id="output">Output</h3>
+<p>On my (not very fast) Mac, it takes about one hour for six million steps of the Markov chain, i.e. around 8-9 hours to run. In part, this is because the model is quite complex. As you may not have time to run these files yourself in a hands-on practical session, I’ve included the resulting log files and trees file in the practical in the <code>output</code> directory.</p>
+<h2 id="examine-the-skyride-output">Examine the skyride output</h2>
+<p>Here, we begin by looking at estimated parameter values from the skyride analysis. As BEAST assumes that the effective population size is independent of the subpopulation (a questionable assumption), this visualisation is the same, regardless of whether we have phylogeography or not.</p>
+<p><strong>Open Tracer.</strong></p>
+<p>Tracer is designed to take a tab-delimited file in which each line represents a separate MCMC sample.</p>
+<p><strong>Click ‘+’ and select ‘H5N1_HA_skyride_ucld_discrete.log’ from the resulting dialog.</strong></p>
+<p>This displays each parameter as a separate element in the ‘Traces’ list. First off, we need to assess whether the MCMC has converged to its stationary distribution. The simplest way to do this is to look at MCMC state through time.</p>
+<p><strong>Select ‘posterior’ from the list of ‘Traces’ and select the ‘Trace’ panel on the right.</strong></p>
+<p>This shows the posterior log probability of the model given the data for each step in the MCMC chain.</p>
+<div class="figure">
+<img src="images/tracer_posterior.png" alt="tracer_posterior" /><p class="caption">tracer_posterior</p>
+</div>
+<p>The MCMC chain starts out in a poor configuration, but eventually converges on the correct stationary distribution; because of this, the initial steps in the MCMC need to be discarded as ‘burn-in’. Here, it looks like the default 10% are sufficient for burn-in. If it looked as though a longer burn-in is needed, you can edit the field for ‘Burn-in’ on the top left.</p>
+<p>It’s good to check other parameters to confirm that their values appear to have burnt-in as well.</p>
+<p>There are more rigorous ways to assess burn-in (all of which are somewhat empirical), but we will stick with this simple eye-ball-the-trace method for the practical.</p>
+<p>After burn-in each sample from the MCMC represents a sample from the posterior distribution of model parameters given the data. For instance, we can look at estimates of TMRCA across the MCMC</p>
+<p><strong>Select ‘treeModel.rootHeight’ from the list of ‘Traces’ and select the ‘Estimates’ panel on the right.</strong></p>
+<p>This shows the distribution of posterior values of TMRCA. The mean estimate is 10.34 years back from 2005, so 1994.66. However, other estimates are also consistent with the data. The 95% credible interval (the Bayesian analogue - not homologue - of the confidence interval) lies between 9.63 and 11.06 years, so between 1993.92 and 1995.37.</p>
+<p>These estimates correspond to the following calendar dates, which I calculated in R using the <a href="http://cran.r-project.org/web/packages/lubridate">lubridate</a> library:</p>
+<pre><code> &gt; library(lubridate)
+&gt; date_decimal(1993.92)
+[1] &quot;1993-12-02 19:12:00 UTC&quot;
+&gt; date_decimal(1994.66)
+[1] &quot;1994-08-29 21:36:00 UTC&quot;
+&gt; date_decimal(1995.37)
+[1] &quot;1995-05-16 01:11:59 UTC&quot;</code></pre>
+<p>Because <a href="http://en.wikipedia.org/wiki/Autocorrelation">autocorrelation</a> exists between samples in the MCMC chain, our estimates of means and credible intervals have more variance than would be expected from independent samples. This inflation of variance can be estimated based on the effective sample size (ESS), which gives the number of independent samples that would give the same variance as the observed autocorrelated samples.</p>
+<p>In this case, we can see that some parameters have very little autocorrelation, for instance, the nucleotide substitution parameters, while TMRCA has a smaller ESS (579). You should look through the list of parameters, and ensure that ESS is reasonable.</p>
+<p><strong>Select all 10 of the ‘skyride.logPopSize’ elements from the list of ‘Traces’.</strong></p>
+<p>This shows the estimated (log) effective population size for each of the windows in the skyride demographic model. The first window is closest to the present and the last window is furthest in the past. We can see that population size is relatively stable, apart from an increase near the TMRCA.</p>
+<div class="figure">
+<img src="images/tracer_logpopsize.png" alt="tracer_logpopsize" /><p class="caption">tracer_logpopsize</p>
+</div>
+<p>We can also have Tracer give a more detailed reconstruction of population history.</p>
+<p><strong>Select ‘GMRF Skyride Reconstruction…’ from the ‘Analysis’ menu.</strong></p>
+<p><strong>Input <code>H5N1_HA_skyride_ucld_discrete.trees</code> in the ‘Trees Log File’ dialog.</strong></p>
+<p>By default this will give population size going backwards from the present. We scale time more appropriately by setting the time of the most tip.</p>
+<p><strong>Input <code>2005</code> as ‘Age of youngest tip’.</strong></p>
+<div class="figure">
+<img src="images/tracer_skyride_dialog.png" alt="tracer_skyride_dialog" /><p class="caption">tracer_skyride_dialog</p>
+</div>
+<p><strong>Click on ‘OK’ to run the analysis.</strong></p>
+<p>This will open a window with the following result:</p>
+<div class="figure">
+<img src="images/tracer_skyride_history.png" alt="tracer_skyride_history" /><p class="caption">tracer_skyride_history</p>
+</div>
+<p>This shows population size through time as inferred by the skyride demographic model; it appears that there is some oscillatory behaviour, although a formal test of this should be done before firm conclusions can be drawn.</p>
+<h2 id="phylogeographic-transition-rates">Phylogeographic transition rates</h2>
+<p>The overall rate that one geographic location transitions to another location is measured by ‘location.clock.rate’, which is rather slow (0.76/year).</p>
+<h2 id="examine-the-trees">Examine the trees</h2>
+<p>Here, we will use FigTree to display the phylogeny from the skyride analysis. However, first we want to condense the posterior sample of trees to something more manageable. For this, we will use the helper program TreeAnnotator that is distributed alongside BEAST.</p>
+<p><strong>Open TreeAnnotator.</strong></p>
+<p>Rather frustratingly, some BEAST programs use the minimum state number as burn-in (here 5 million), while others take a count of states to throw away (here 200). TreeAnnotator takes the latter.</p>
+<p><strong>To burn-in the first 5 million states, enter <code>200</code> for ‘Burnin’.</strong></p>
+<p><strong>Enter <code>H5N1_HA_skyride_ucld_discrete.trees</code> as ‘Input Tree File’ and enter <code>H5N1_HA_skyride_ucld_discrete.mcc</code> as ‘Output file’.</strong></p>
+<div class="figure">
+<img src="images/treeannotator.png" alt="treeannotator" /><p class="caption">treeannotator</p>
+</div>
+<p>This will print out a single maximum clade credibility (MCC) tree to the file <code>H5N1_HA_skyride_ucld_discrete.mcc</code>. For convenience, I’ve included this file in the <code>output</code> directory.</p>
+<h2 id="tree-statistics">Tree statistics</h2>
+<p>BEAST also comes with a program, <code>treestat</code> that can calculate various statistics from a set of trees. Most of these tree statistics aren’t entirely useful, as they’re not tailored for serial samples. However, one that will be useful is the TMRCA for the MCC tree.</p>
+<p><strong>Run <code>treestat</code>, select ‘tMRCA’ from the list of statistics, and move it to the right with the arrow. Then, check ‘For the whole tree’ and press ‘OK’. Now press ‘Process tree file’ and select <code>H5N1_HA_skyride_ucld_discrete.mcc</code>. Save the log file as <code>H5N1_HA_skyride_ucld_discrete.mcc.treestat</code>.</strong></p>
+<p>I have included <code>H5N1_HA_skyride_ucld_discrete.mcc.treestat</code> in the <code>output</code> directory. Looking at the output file, we see that the time to the most recent common ancestor is 10.29 years, which in calendar time is 2005-10.29=1994.71. We will use this number later on. Note that the TMRCA for the MCC tree is close, but not exactly the same as that we obtained from Tracer.</p>
+<h2 id="visualisation-of-the-tree-in-figtree">Visualisation of the tree in FigTree</h2>
+<p>We can now open this MCC tree in FigTree.</p>
+<p><strong>Open FigTree, select ‘Open…’ from the ‘File’ menu and choose the file <code>H5N1_HA_skyride_ucld_discrete.mcc</code>.</strong></p>
+<p>This displays the tree with each taxon labeled.</p>
+<div class="figure">
+<img src="images/figtree_mcc_orig.png" alt="figtree_mcc_orig" /><p class="caption">figtree_mcc_orig</p>
+</div>
+<p>Note how taxa sequenced on the same year are aligned; in a more conservative analysis, we might incorporate uncertainty in the sampling times, or better yet, try to find out the exact sampling times.</p>
+<p>We can get a better idea of the structure of the phylogeny with a bit of tree manipulation.</p>
+<p><strong>Turn off ‘Tip Labels’ in the left-hand list.</strong></p>
+<p><strong>Under ‘Trees’, turn on ‘Order nodes’ and choose ‘decreasing’.</strong></p>
+<div class="figure">
+<img src="images/figtree_mcc_reordered.png" alt="figtree_mcc_reordered" /><p class="caption">figtree_mcc_reordered</p>
+</div>
+<p>We can now see where the oscillatory pattern observed in the skyride comes from; there are two distinct clades separated by time.</p>
+<p>We will annotate nodes with their geographic locations based on color.</p>
+<p><strong>Turn on ‘Node Shapes’, enter <code>8</code> as ‘Max size’ and ‘Colour by’ location.</strong></p>
+<p>This results in nodes colored by their most likely location. Click on ‘Setup: Colour’ to get a list of location colors, if you want to change this.</p>
+<p>Including a legend will make this more clear.</p>
+<p><strong>Turn on ‘Legend’ and choose ‘location’ for ‘Attribute’.</strong></p>
+<p>The resulting phylogenies shows early nodes in Hong Kong, then Guangdong, and to the rest of the regions.</p>
+<div class="figure">
+<img src="images/figtree_geo.png" alt="figtree_geo" /><p class="caption">figtree_geo</p>
+</div>
+<p>Adjustments can be made in the ‘Layout’ list to better see transitions between locations.</p>
+<h2 id="where-is-the-root">Where is the root?</h2>
+<p>In the phylogeographic reconstruction, each node in each MCMC sample is annotated with a geographic location. The certainty of the geographic reconstruction can be assessed by looking the distribution of node states across the MCMC. The file <code>location.states.log</code> gives the reconstruction of the root node across the MCMC. We can read in this file into, say, R, and get the distribution of the location of the root.</p>
+<pre><code>&gt; rootstate &lt;- read.table(&#39;../output/location.states.log&#39;,skip=2,header=TRUE)
+&gt; burnin &lt;- 200
+&gt; numstates &lt;- dim(rootstate)[[1]]
+&gt; rootstate.trim &lt;- rootstate[burnin:numstates,]
+&gt; as.data.frame.table(table(rootstate.trim$location)/(numstates-burnin))
+       Var1        Freq
+1    Fujian 0.073292615
+2 Guangdong 0.155469184
+3   Guangxi 0.124930594
+4     Hebei 0.002776235
+5     Henan 0.002776235
+6  HongKong 0.639644642
+7     Hunan 0.001665741</code></pre>
+<p>This shows that, while Hong Kong may be the most likely root (<em>under this model</em>), there is a fair amount of uncertainty.</p>
+<h2 id="geographic-visualisations">Geographic visualisations</h2>
+<p>In addition, the phylogeographic reconstruction can be visualised as a spread across the globe, in a map-centric fashion, rather than the previous tree-centric visualization. To do this, we will run a small script on the MCC tree that will create a KML file that can be viewed in Google Earth. This script is called <code>phylogeo.jar</code> as is located in the <code>scripts/</code> directory. This analysis requires latitude and longitude coordinates for each location in a tab-delimited file. I’ve included this as <code>data/H5N1_latlong.txt</code>.</p>
+<p>To run the script, open a terminal window, navigate to the <code>output/</code> directory and run the following.</p>
+<pre><code>java -jar ../scripts/phylogeo.jar -coordinates ../data/H5N1_latlong.txt -annotation location -mrsd 2005 H5N1_HA_skyride_ucld_discrete.mcc H5N1_HA_skyride_ucld_discrete.kml</code></pre>
+<p>This specifies the <code>H5N1_latlong.txt</code> coordinates file, that the geographic character state is called <code>location</code>, that the most recent tip is at <code>2005</code> and that the MCC tree is the file <code>H5N1_HA_skyride_ucld_discrete.mcc</code>. Running this script generates the file <code>H5N1_HA_skyride_ucld_discrete.kml</code>, which I’ve included in the <code>output/</code> directory.</p>
+<p><strong>Open Google Earth and open the <code>H5N1_HA_skyride_ucld_discrete.kml</code> file.</strong></p>
+<p>This will display well-supported transitions on the globe and includes their date of occurence.</p>
+<div class="figure">
+<img src="images/google_earth.png" alt="google_earth" /><p class="caption">google_earth</p>
+</div>
+<h2 id="using-phylowood">Using Phylowood</h2>
+<p>Phylowood is a program for visualising phylogeography using only a web browser (rather than downloading Google Earth, say). It accepts a different format than is generated by BEAST, but there is a Ruby script in the Phylowood github repository, <code>beast-to-nhx-phylowood-discrete-location.rb</code>, that if you have Ruby installed, can convert the MCC tree generated by TreeAnnotator to NHX. If you change to the output directory, and run the following, this will generate a NHX file, <code>out.txt</code>.</p>
+<pre><code>ruby ../scripts/beast-to-nhx-phylowood-discrete-location.rb ./H5N1_HA_skyride_ucld_discrete.mcc</code></pre>
+<p>This is just a skeleton, which needs to be completed by hand (although if one were to do this all the time, one could automate the procedure). Firstly, the coordinates in the ‘geo’ block need to be included.</p>
+<pre><code>Begin geo;
+    Dimensions ngeo=7;
+    Coords
+        Fujian 25.93 118.25,
+        Guangdong 22.87 113.00,
+        Guangxi 23.64 108.27,
+        Hebei 39.32 116.70,
+        Henan 33.88 113.49,
+        HongKong 22.25 114.57,
+        Hunan 27.38 111.53
+    ;
+End;</code></pre>
+<p>One can find these e.g. using Google Maps. Next, we change the <code>phylowood</code> block, by adding in the start year, increasing the marker radius and modifying the description.</p>
+<pre><code>Begin phylowood;
+    drawtype    pie
+    modeltype   phylogeography
+    areatype    discrete
+    maptype clean
+    pieslicestyle   full
+    piefillstyle    outwards
+    timestart   1994.71
+    timeunit    yr
+    markerradius    300.0
+    minareaval  0.0
+    description Discrete phylogeography of H5N1 influenza
+End;</code></pre>
+<p>I have saved this file as <code>H5N1_HA_skyride_ucld_discrete.nhx</code>, which is in the <code>outputs</code> folder.</p>
+<p>Next, go the the <a href="http://mlandis.github.io/phylowood/">Phylowood</a> website, and paste in the contents of <code>H5N1_HA_skyride_ucld_discrete.nhx</code> into the window and press ‘Load’.</p>
+<div class="figure">
+<img src="images/phylowood.png" alt="phylowood" /><p class="caption">phylowood</p>
+</div>
+<p>Now press the ‘Play’ button (the usual right arrow) under the tree, and watch! Further details can be found by pressing ‘Help’.</p>
+</body>
+</html>
