@@ -1,0 +1,28 @@
+
+Operator analysis
+Operator                                          Tuning   Count      Time     Time/Op  Pr(accept) 
+scale(ac)                                         0.394   45524      133497   2.93     0.2348      
+scale(ag)                                         0.556   45848      134493   2.93     0.2339      
+scale(at)                                         0.391   45696      133668   2.93     0.2343      
+scale(cg)                                         0.312   45537      133246   2.93     0.2348      
+scale(gt)                                         0.424   45436      132981   2.93     0.2338      
+frequencies                                       0.04    45417      133054   2.93     0.2357      
+scale(alpha)                                      0.442   45472      131911   2.9      0.2319      
+scale(pInv)                                       0.636   45316      130010   2.87     0.2325      
+scale(H5N1_HA.fas.ucld.mean)                      0.696   1361863    3947880  2.9      0.2341      
+scale(H5N1_HA.fas.ucld.stdev)                     0.652   1362912    3950638  2.9      0.2339      
+scale(location.clock.rate)                        0.293   1364856    589777   0.43     0.234       
+subtreeSlide(treeModel)                           0.522   6828337    4159063  0.61     0.2339      
+Narrow Exchange(treeModel)                                6824912    3235780  0.47     0.1932      
+Wide Exchange(treeModel)                                  1363746    186735   0.14     0.0037      
+wilsonBalding(treeModel)                                  1364495    1093947  0.8      0.0063      
+scale(treeModel.rootHeight)                       0.944   1367008    382743   0.28     0.2339      
+uniform(nodeHeights(treeModel))                           13640104   10164120 0.75     0.4179      
+gmrfBlockUpdateOperator                           7.326   910605     144472   0.16     0.2342      
+up:H5N1_HA.fas.ucld.mean down:nodeHeights(treeModel) 0.974   1366040    2654266  1.94     0.2341      
+swapOperator(H5N1_HA.fas.branchRates.categories)          4549760    3895630  0.86     0.4984      
+uniformInteger(H5N1_HA.fas.branchRates.categories)        4553759    3026794  0.66     0.6268      
+up:location.clock.rate down:nodeHeights(treeModel) 0.971   1366243    2663394  1.95     0.2339      
+scale(location.rates)                             0.642   456037     207420   0.45     0.2341      
+bitFlip(location.indicators)                              455077     181772   0.4      0.1688      
+
