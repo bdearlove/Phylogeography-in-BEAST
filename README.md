@@ -1,8 +1,10 @@
-# Inferring spatiotemporal dynamics of H5N1 influenza from sequence data
+# Phylogeography in BEAST
 
 ## Introduction
 
-This tutorial walks through how to use [BEAST](http://beast.bio.ed.ac.uk/) and associated software to infer spatiotemporal dynamics from viral sequence data. I forked Trevor Bedford's [excellent tutorial on pandemic H1N1 influenza](https://github.com/trvrb/influenza-dynamics-practical), and modified it using a smaller dataset on H5N1 influenza, and using a visualization in Phylowood. Any mistakes and opinions introduced are mine!
+The aim of this tutorial is to introduce you to the methods I used to infer zoonotic transmission in *Campylobacter*. Here we will use the H1N1 influenza example dataset distributed with BEAST, as it is much more manageable for than the *Campylobacter* tutorial!  
+
+This tutorial was forked from Simon Frost's [version](https://github.com/sdwfrost/influenza-dynamics-practical-h5n1) of Trevor Bedford's [excellent tutorial on pandemic H1N1 influenza](https://github.com/trvrb/influenza-dynamics-practical). Any mistakes and opinions introduced are mine.
 
 ## Required software
 
