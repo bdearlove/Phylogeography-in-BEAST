@@ -1,3 +1,6 @@
+---
+output: pdf_document
+---
 # Phylogeography in BEAST
 
 ## Introduction
