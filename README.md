@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The aim of this tutorial is to introduce you to the methods I used to infer zoonotic transmission in *Campylobacter*. Here we will use the H1N1 influenza example dataset distributed with BEAST, as it is much more manageable for than the *Campylobacter* tutorial!  
+The aim of this tutorial is to introduce you to the methods I used to infer zoonotic transmission in *Campylobacter*. Here we will use the H1N1 influenza example dataset distributed with BEAST, as it is much more manageable for a tutorial than the *Campylobacter* data! I will try to make link the steps here to what I did in my study.  
 
 This tutorial was forked from Simon Frost's [version](https://github.com/sdwfrost/influenza-dynamics-practical-h5n1) of Trevor Bedford's [excellent tutorial on pandemic H1N1 influenza](https://github.com/trvrb/influenza-dynamics-practical). Any mistakes and opinions introduced are mine.
 
@@ -99,7 +99,7 @@ This model assumes a fixed number of windows, where within each window effective
 
 Generally, these non-parametric models offer flexibility for the data to say what it wants to say. However, these are relatively complex models and so suffer from the [bias-variance tradeoff](http://scott.fortmann-roe.com/docs/BiasVariance.html). This often results in wide bounds of uncertainty to the resulting estimates.
 
-We next need to load the geographic metadata into BEAUti.
+We next need to load the geographic metadata into BEAUti (host species in the zoonotic model).
 
 **Select the 'Traits' panel and click on the 'Add trait' button.**
 
@@ -272,7 +272,15 @@ XML is structured in a hierarchical fashion with logical blocks of markup surrou
 
 ```
 
-This fine-tuning of the XML can be quite helpful and there are quite a few more advanced analyses that require editing the XML rather than relying on BEAUti output.
+This fine-tuning of the XML can be quite helpful and there are quite a few more advanced analyses that require editing the XML rather than relying on BEAUti output. For the *Campylobacter* data, I added an ambiguity code to allow the human isolates to have an ‘unknown’ source population. For each human isolate, the other host species in the analysis were given equal prior probability and thus most likely source of the human isolates could be inferred. This is edited in to the BEAST xml file by adding an <ambiguity> to the <generalDataType> as in the example below, where state 9 can be inferred to be either of states 1 or 2:
+```
+<generalDataType id="host.dataType">
+	<!-- Number Of States = 2 -->
+	<state code="1"/>
+	<state code="2"/>
+	<ambiguity code="9" states="12"/>
+</generalDataType>
+```
 
 I've included this XML with the practical as `xml/H5N1_HA_skyride_ucld_discrete.xml`.
 
