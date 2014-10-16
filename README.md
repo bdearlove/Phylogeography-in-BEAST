@@ -272,7 +272,7 @@ XML is structured in a hierarchical fashion with logical blocks of markup surrou
 
 ```
 
-This fine-tuning of the XML can be quite helpful and there are quite a few more advanced analyses that require editing the XML rather than relying on BEAUti output. For the *Campylobacter* data, I added an ambiguity code to allow the human isolates to have an ‘unknown’ source population. For each human isolate, the other host species in the analysis were given equal prior probability and thus most likely source of the human isolates could be inferred. This is edited in to the BEAST xml file by adding an <ambiguity> to the <generalDataType> as in the example below, where state 9 can be inferred to be either of states 1 or 2:
+This fine-tuning of the XML can be quite helpful and there are quite a few more advanced analyses that require editing the XML rather than relying on BEAUti output. For the *Campylobacter* data, I added an ambiguity code to allow the human isolates to have an ‘unknown’ source population. For each human isolate, the other host species in the analysis were given equal prior probability and thus most likely source of the human isolates could be inferred. This is edited in to the BEAST xml file by adding an `<ambiguity>` to the `<generalDataType>` as in the example below, where state 9 can be inferred to be either of states 1 or 2:
 ```
 <generalDataType id="host.dataType">
 	<!-- Number Of States = 2 -->
